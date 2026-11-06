@@ -1,0 +1,6 @@
+interface:
+  display_name: "小游戏数据统计核实"
+  short_description: "核查统计集成、行为埋点与双通道真实网络上报"
+  default_prompt: "Use $minigame-statistics-verification to verify analytics integration and runtime reporting for the selected game build, writing any new automation scripts in Python only."
+policy:
+  allow_implicit_invocation: true

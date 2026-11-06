@@ -1,0 +1,7 @@
+interface:
+  display_name: "小游戏处理标准"
+  short_description: "用于小游戏开发、界面修改、调试与交付验收的通用前置规范"
+  default_prompt: "使用 $minigame-standard 按小游戏标准处理当前任务。"
+
+policy:
+  allow_implicit_invocation: true

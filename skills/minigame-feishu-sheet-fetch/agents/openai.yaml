@@ -1,0 +1,6 @@
+interface:
+  display_name: "飞书小游戏信息表拉取"
+  short_description: "只读解析飞书电子表格中的唯一目标游戏行并输出规范 JSON"
+  default_prompt: "Use $minigame-feishu-sheet-fetch to fetch and normalize the selected game row from a Feishu spreadsheet without writing back."
+policy:
+  allow_implicit_invocation: true

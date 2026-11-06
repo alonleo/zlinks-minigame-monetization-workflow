@@ -1,0 +1,48 @@
+{
+  "title": "排行榜",
+  "tabs": [
+    {"id": "friends", "label": "好友榜", "source": "platform_friends"},
+    {"id": "global", "label": "全国榜", "source": "project_backend"},
+    {"id": "province", "label": "省份榜", "source": "project_backend"}
+  ],
+  "metricLabel": "好友已通关数",
+  "columns": ["名次", "昵称", "通关数"],
+  "score": {
+    "key": "user_rank",
+    "source": "confirmed_result",
+    "direction": "descending",
+    "emptyValue": "—"
+  },
+  "layout": {
+    "tabsProtrudePanelRatio": 0.6667,
+    "scrollRowsOnly": true,
+    "pinColumnHeader": true,
+    "pinCurrentRow": true,
+    "showTopThreeMedals": true,
+    "avatarFallback": "rank-avatar-placeholder.png",
+    "playerTextAlign": "left"
+  },
+  "font": {
+    "family": "Alibaba PuHuiTi",
+    "weight": "Regular",
+    "requiredCoverage": ["zh-CN", "en", "digits", "common-punctuation", "province-names", "dynamic-zh-en-nicknames"],
+    "excludeByDefault": ["ja-kana", "ko", "emoji"]
+  },
+  "windows": {
+    "friends": {"pinnedRow": "self", "openDataDomain": true},
+    "global": {"pinnedRow": "self", "pagination": "server-hasMore"},
+    "province": {"pinnedRow": "selfProvince", "selectorRequiresBackendContract": true}
+  },
+  "states": {
+    "emptyTitle": "暂无好友排行数据",
+    "emptyHint": "完成关卡后再来看看",
+    "unranked": "未上榜",
+    "permissionDenied": "请进入设置页允许获取微信朋友信息",
+    "requestFailed": "排行榜加载失败，请稍后重试"
+  },
+  "actions": {
+    "shareEnabled": true,
+    "shareText": "分享好友排行榜",
+    "closeText": "关闭"
+  }
+}

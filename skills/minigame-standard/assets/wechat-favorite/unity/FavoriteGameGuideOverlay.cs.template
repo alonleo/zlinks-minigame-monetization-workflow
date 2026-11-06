@@ -1,0 +1,61 @@
+using UnityEngine;
+using UnityEngine.UI;
+
+/// <summary>Self-contained overlay for the WeChat favorite/add-to-mini-program guide.</summary>
+public sealed class FavoriteGameGuideOverlay : MonoBehaviour
+{
+    private const string ResourcePath = "UI/FavoriteGameGuideOverlay";
+    private static FavoriteGameGuideOverlay instance;
+
+    [SerializeField] private Button closeButton;
+
+    public static FavoriteGameGuideOverlay Show()
+    {
+        if (instance == null)
+        {
+            GameObject prefab = Resources.Load<GameObject>(ResourcePath);
+            if (prefab == null)
+            {
+                Debug.LogError("[FavoriteGameGuide] Prefab missing at Resources/" + ResourcePath);
+                return null;
+            }
+
+            instance = Instantiate(prefab).GetComponent<FavoriteGameGuideOverlay>();
+            if (instance == null)
+            {
+                Debug.LogError("[FavoriteGameGuide] Prefab is missing FavoriteGameGuideOverlay.");
+                return null;
+            }
+
+            instance.name = "FavoriteGameGuideOverlay";
+            DontDestroyOnLoad(instance.gameObject);
+        }
+
+        instance.gameObject.SetActive(true);
+        return instance;
+    }
+
+    public void Hide()
+    {
+        gameObject.SetActive(false);
+    }
+
+    private void Awake()
+    {
+        if (instance != null && instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        instance = this;
+        if (closeButton != null) closeButton.onClick.AddListener(Hide);
+    }
+
+    private void OnDestroy()
+    {
+        if (closeButton != null) closeButton.onClick.RemoveListener(Hide);
+        if (instance == this) instance = null;
+    }
+}
+

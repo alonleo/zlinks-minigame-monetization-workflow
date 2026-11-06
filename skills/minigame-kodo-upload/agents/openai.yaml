@@ -1,0 +1,4 @@
+interface:
+  display_name: "小游戏快速上传 Kodo"
+  short_description: "上传小游戏资源到七牛 Kodo，支持增量校验与安全凭据复用"
+  default_prompt: "使用 $minigame-kodo-upload，将我指定路径中的小游戏资源上传到指定七牛空间和目录，并校验结果。"

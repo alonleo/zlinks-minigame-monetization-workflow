@@ -1,0 +1,22 @@
+# Local configuration and credentials
+config/feishu-sheet.json
+.env
+.env.*
+*.dpapi
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Python caches and local test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

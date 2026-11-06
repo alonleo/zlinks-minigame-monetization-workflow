@@ -1,0 +1,48 @@
+using UnityEngine;
+using UnityEngine.UI;
+
+/// <summary>轻量圆角矩形，仅用于微信好友榜的纯色面板和按钮。</summary>
+[RequireComponent(typeof(CanvasRenderer))]
+public sealed class WeChatRankRoundedGraphic : MaskableGraphic
+{
+    [SerializeField, Min(0f)] private float radius = 24f;
+    [SerializeField, Range(2, 16)] private int cornerSegments = 8;
+
+    public float Radius
+    {
+        get => radius;
+        set { radius = Mathf.Max(0f, value); SetVerticesDirty(); }
+    }
+
+    protected override void OnPopulateMesh(VertexHelper vh)
+    {
+        vh.Clear();
+        Rect rect = GetPixelAdjustedRect();
+        if (rect.width <= 0f || rect.height <= 0f) return;
+
+        float r = Mathf.Min(radius, Mathf.Min(rect.width, rect.height) * 0.5f);
+        int segments = Mathf.Max(2, cornerSegments);
+        vh.AddVert(rect.center, color, new Vector2(0.5f, 0.5f));
+
+        AddCorner(vh, new Vector2(rect.xMax - r, rect.yMin + r), r, -90f, 0f, segments, rect);
+        AddCorner(vh, new Vector2(rect.xMax - r, rect.yMax - r), r, 0f, 90f, segments, rect);
+        AddCorner(vh, new Vector2(rect.xMin + r, rect.yMax - r), r, 90f, 180f, segments, rect);
+        AddCorner(vh, new Vector2(rect.xMin + r, rect.yMin + r), r, 180f, 270f, segments, rect);
+
+        int perimeter = vh.currentVertCount - 1;
+        for (int i = 0; i < perimeter; i++)
+            vh.AddTriangle(0, i + 1, i + 1 == perimeter ? 1 : i + 2);
+    }
+
+    private void AddCorner(VertexHelper vh, Vector2 center, float r, float from, float to, int segments, Rect rect)
+    {
+        for (int i = 0; i <= segments; i++)
+        {
+            float angle = Mathf.Lerp(from, to, i / (float)segments) * Mathf.Deg2Rad;
+            Vector2 point = center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * r;
+            Vector2 uv = new Vector2(Mathf.InverseLerp(rect.xMin, rect.xMax, point.x),
+                                     Mathf.InverseLerp(rect.yMin, rect.yMax, point.y));
+            vh.AddVert(point, color, uv);
+        }
+    }
+}

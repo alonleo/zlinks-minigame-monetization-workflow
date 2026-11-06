@@ -1,0 +1,53 @@
+using UnityEngine;
+using UnityEngine.UI;
+
+/// <summary>Texture-free elliptical outline used to highlight the supplied tutorial screenshots.</summary>
+[RequireComponent(typeof(CanvasRenderer))]
+public sealed class FavoriteGuideRingGraphic : MaskableGraphic
+{
+    [SerializeField, Min(1f)] private float thickness = 6f;
+    [SerializeField, Range(12, 96)] private int segments = 48;
+
+    public float Thickness
+    {
+        get => thickness;
+        set
+        {
+            thickness = Mathf.Max(1f, value);
+            SetVerticesDirty();
+        }
+    }
+
+    protected override void OnPopulateMesh(VertexHelper vh)
+    {
+        vh.Clear();
+        Rect rect = GetPixelAdjustedRect();
+        if (rect.width <= 0f || rect.height <= 0f) return;
+
+        int resolvedSegments = Mathf.Max(12, segments);
+        Vector2 outerRadius = rect.size * 0.5f;
+        Vector2 innerRadius = new Vector2(
+            Mathf.Max(0f, outerRadius.x - thickness),
+            Mathf.Max(0f, outerRadius.y - thickness));
+        Vector2 center = rect.center;
+
+        for (int index = 0; index <= resolvedSegments; index++)
+        {
+            float angle = index / (float)resolvedSegments * Mathf.PI * 2f;
+            Vector2 direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+            vh.AddVert(center + Vector2.Scale(direction, outerRadius), color, Vector2.zero);
+            vh.AddVert(center + Vector2.Scale(direction, innerRadius), color, Vector2.one);
+        }
+
+        for (int index = 0; index < resolvedSegments; index++)
+        {
+            int outer = index * 2;
+            int inner = outer + 1;
+            int nextOuter = outer + 2;
+            int nextInner = outer + 3;
+            vh.AddTriangle(outer, nextOuter, inner);
+            vh.AddTriangle(nextOuter, nextInner, inner);
+        }
+    }
+}
+

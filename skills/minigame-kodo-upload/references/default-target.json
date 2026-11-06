@@ -1,0 +1,5 @@
+{
+  "bucket": "wjtech",
+  "domain": "https://cdn.zllinks.com",
+  "prefix_source": "Resolve from the selected game's exported DATA_CDN and matching manifest; never reuse another game's prefix."
+}

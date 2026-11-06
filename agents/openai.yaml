@@ -1,0 +1,6 @@
+interface:
+  display_name: "小游戏商业化流程"
+  short_description: "协调需求实现、平台 IDE 录屏与双通道统计核实"
+  default_prompt: "Use $minigame-monetization-workflow to coordinate the full commercialization workflow for the selected game, writing any new automation scripts in Python only."
+policy:
+  allow_implicit_invocation: true

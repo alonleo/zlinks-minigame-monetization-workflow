@@ -1,0 +1,143 @@
+using UnityEngine;
+using UnityEngine.UI;
+#if WEIXINMINIGAME && !UNITY_EDITOR
+using WeChatWASM;
+#endif
+
+/// <summary>微信开放数据域好友榜的全屏承载层。</summary>
+public sealed class WeChatRankOverlay : MonoBehaviour
+{
+    private const string PrefabPath = "StreamingUI/WeChatRankOverlay";
+    private static WeChatRankOverlay instance;
+
+    [SerializeField] private RawImage rankImage;
+    [SerializeField] private Button closeButton;
+    [SerializeField] private Button shareButton;
+    [SerializeField] private GameObject editorPreview;
+
+    private Texture2D sharedTexture;
+
+    public static bool Show()
+    {
+#if !WEIXINMINIGAME && !UNITY_EDITOR
+        return false;
+#else
+        try
+        {
+            EnsureInstance();
+            if (instance == null || instance.rankImage == null) return false;
+
+            instance.gameObject.SetActive(true);
+#if WEIXINMINIGAME && !UNITY_EDITOR
+            Canvas.ForceUpdateCanvases();
+            RectInt viewport = instance.GetOpenDataViewport();
+            WX.GetOpenDataContext();
+            WX.ShowOpenData(instance.sharedTexture, viewport.x, viewport.y, viewport.width, viewport.height);
+            WX.GetOpenDataContext().PostMessage("{\"type\":\"showFriendsRank\"}");
+#endif
+            return true;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("[WeiXinPlatform] 好友排行榜打开失败: " + e.Message);
+            Hide();
+            return false;
+        }
+#endif
+    }
+
+    public static void Hide()
+    {
+        if (instance == null) return;
+#if WEIXINMINIGAME && !UNITY_EDITOR
+        try { WX.HideOpenData(); }
+        catch (System.Exception) { }
+#endif
+        instance.gameObject.SetActive(false);
+    }
+
+    private static void EnsureInstance()
+    {
+        if (instance != null) return;
+        var prefab = Resources.Load<GameObject>(PrefabPath);
+        if (prefab == null)
+        {
+            Debug.LogError("[WeiXinPlatform] 好友排行榜 Prefab 缺失: Resources/" + PrefabPath);
+            return;
+        }
+
+        var root = Instantiate(prefab);
+        instance = root.GetComponent<WeChatRankOverlay>();
+        if (instance == null)
+        {
+            Debug.LogError("[WeiXinPlatform] 好友排行榜 Prefab 缺少 WeChatRankOverlay 组件");
+            Destroy(root);
+            return;
+        }
+        instance.name = "WeChatRankOverlay";
+        DontDestroyOnLoad(instance.gameObject);
+        instance.gameObject.SetActive(false);
+    }
+
+    private void Awake()
+    {
+        if (instance != null && instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        instance = this;
+        sharedTexture = new Texture2D(16, 16, TextureFormat.RGBA32, false);
+        sharedTexture.wrapMode = TextureWrapMode.Clamp;
+        if (rankImage != null)
+        {
+            rankImage.texture = sharedTexture;
+            rankImage.raycastTarget = false;
+#if UNITY_EDITOR
+            // 微信开放数据域在编辑器中不可用；隐藏空纹理，保留完整弹窗外壳供布局预览。
+            rankImage.enabled = false;
+#endif
+        }
+#if UNITY_EDITOR
+        if (editorPreview != null) editorPreview.SetActive(true);
+#else
+        if (editorPreview != null) editorPreview.SetActive(false);
+#endif
+        if (closeButton != null) closeButton.onClick.AddListener(Hide);
+        if (shareButton != null) shareButton.onClick.AddListener(ShareRank);
+    }
+
+    private void ShareRank()
+    {
+        PlatformManager.Instance?.Share("friend_rank", null);
+    }
+
+    private RectInt GetOpenDataViewport()
+    {
+        var corners = new Vector3[4];
+        rankImage.rectTransform.GetWorldCorners(corners);
+        float minX = corners[0].x, maxX = corners[0].x;
+        float minY = corners[0].y, maxY = corners[0].y;
+        for (int i = 1; i < corners.Length; i++)
+        {
+            minX = Mathf.Min(minX, corners[i].x);
+            maxX = Mathf.Max(maxX, corners[i].x);
+            minY = Mathf.Min(minY, corners[i].y);
+            maxY = Mathf.Max(maxY, corners[i].y);
+        }
+        int left = Mathf.Clamp(Mathf.RoundToInt(minX), 0, Screen.width - 1);
+        int right = Mathf.Clamp(Mathf.RoundToInt(maxX), left + 1, Screen.width);
+        int top = Mathf.Clamp(Mathf.RoundToInt(Screen.height - maxY), 0, Screen.height - 1);
+        int bottom = Mathf.Clamp(Mathf.RoundToInt(Screen.height - minY), top + 1, Screen.height);
+        return new RectInt(left, top, right - left, bottom - top);
+    }
+
+    private void OnDestroy()
+    {
+        if (closeButton != null) closeButton.onClick.RemoveListener(Hide);
+        if (shareButton != null) shareButton.onClick.RemoveListener(ShareRank);
+        if (instance == this) instance = null;
+        if (sharedTexture != null) Destroy(sharedTexture);
+    }
+}

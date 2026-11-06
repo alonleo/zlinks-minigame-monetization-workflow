@@ -1,0 +1,6 @@
+interface:
+  display_name: "小游戏 IDE 过程录屏"
+  short_description: "在微信或抖音 IDE 录制可追溯游戏过程并生成回执"
+  default_prompt: "Use $minigame-ide-gameplay-recording to record and verify the selected game build in the target platform IDE, writing any new helper scripts in Python only."
+policy:
+  allow_implicit_invocation: true

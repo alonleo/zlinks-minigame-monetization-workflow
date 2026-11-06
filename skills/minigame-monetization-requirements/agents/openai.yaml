@@ -1,0 +1,6 @@
+interface:
+  display_name: "小游戏商业化需求实现"
+  short_description: "提取并实现商业化需求，完成构建、IDE 验收与资源回执"
+  default_prompt: "Use $minigame-monetization-requirements to implement and verify the commercialization requirements for the selected game, writing any new automation scripts in Python only."
+policy:
+  allow_implicit_invocation: true

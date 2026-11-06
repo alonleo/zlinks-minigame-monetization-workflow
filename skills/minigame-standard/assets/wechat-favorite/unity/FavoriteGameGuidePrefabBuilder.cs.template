@@ -1,0 +1,330 @@
+#if UNITY_EDITOR
+using System.IO;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+public static class FavoriteGameGuidePrefabBuilder
+{
+    private const string AssetDirectory = "Assets/UI/FavoriteGuide/Images";
+    private const string OutputPath = "Assets/Resources/UI/FavoriteGameGuideOverlay.prefab";
+    private const string PreviewPath = "Docs/FavoriteGameGuidePreview.png";
+    private const string FontPath = "__SET_PROJECT_CHINESE_FONT_PATH__";
+
+    private static readonly Color Ink = new Color32(151, 91, 53, 255);
+    private static readonly Color Cream = new Color32(255, 251, 226, 255);
+    private static readonly Color Border = new Color32(223, 143, 81, 255);
+    private static readonly Color Dash = new Color32(205, 190, 128, 255);
+    private static readonly Color DarkMenu = new Color32(52, 74, 100, 255);
+    private static Font font;
+
+    [MenuItem("Tools/Mini Game/Build WeChat Favorite Guide Prefab")]
+    public static void Build()
+    {
+        PrepareSprite(AssetDirectory + "/favorite-guide-title.png", 256);
+        PrepareSprite(AssetDirectory + "/favorite-guide-close.png", 64);
+        PrepareSprite(AssetDirectory + "/favorite-guide-arrow.png", 128);
+        PrepareSprite(AssetDirectory + "/favorite-guide-step-menu.png", 512);
+        PrepareSprite(AssetDirectory + "/favorite-guide-step-share.png", 1024);
+
+        font = AssetDatabase.LoadAssetAtPath<Font>(FontPath);
+        Sprite titleSprite = AssetDatabase.LoadAssetAtPath<Sprite>(AssetDirectory + "/favorite-guide-title.png");
+        Sprite closeSprite = AssetDatabase.LoadAssetAtPath<Sprite>(AssetDirectory + "/favorite-guide-close.png");
+        Sprite stepOneSprite = AssetDatabase.LoadAssetAtPath<Sprite>(AssetDirectory + "/favorite-guide-step-menu.png");
+        Sprite stepTwoSprite = AssetDatabase.LoadAssetAtPath<Sprite>(AssetDirectory + "/favorite-guide-step-share.png");
+        Sprite arrowSprite = AssetDatabase.LoadAssetAtPath<Sprite>(AssetDirectory + "/favorite-guide-arrow.png");
+        if (font == null || titleSprite == null || closeSprite == null || stepOneSprite == null ||
+            stepTwoSprite == null || arrowSprite == null)
+        {
+            Debug.LogError("FAVORITE_GUIDE_ASSET_MISSING");
+            return;
+        }
+
+        GameObject root = new GameObject("FavoriteGameGuideOverlay", typeof(RectTransform), typeof(Canvas),
+            typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(FavoriteGameGuideOverlay));
+        RectTransform rootRect = root.GetComponent<RectTransform>();
+        Stretch(rootRect, 0f);
+        rootRect.localScale = Vector3.one;
+
+        Canvas canvas = root.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 31990;
+        CanvasScaler scaler = root.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(750f, 1334f);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        scaler.matchWidthOrHeight = 0.5f;
+
+        CreateRounded(root.transform, "Shade", new Color(0.035f, 0.09f, 0.13f, 0.82f), 0f, Vector2.zero, Vector2.one);
+
+        FavoriteGuideRoundedGraphic shadow = CreateRounded(root.transform, "PanelShadow", new Color32(112, 63, 37, 140), 42f,
+            new Vector2(0.075f, 0.14f), new Vector2(0.925f, 0.82f));
+        shadow.rectTransform.anchoredPosition = new Vector2(0f, -10f);
+        FavoriteGuideRoundedGraphic panelBorder = CreateRounded(root.transform, "PanelBorder", Border, 42f,
+            new Vector2(0.075f, 0.15f), new Vector2(0.925f, 0.83f));
+        FavoriteGuideRoundedGraphic panel = CreateInset(panelBorder.transform, "Panel", Cream, 36f, 7f);
+
+        Image title = CreateImage(root.transform, "TitlePlaque", titleSprite, new Vector2(0.14f, 0.785f), new Vector2(0.86f, 0.89f));
+        title.preserveAspect = false;
+        Text titleText = CreateText(title.transform, "Title", "收藏游戏", 48, new Color32(255, 245, 178, 255), TextAnchor.MiddleCenter, true);
+        titleText.GetComponent<Outline>().effectColor = new Color32(104, 52, 26, 255);
+        titleText.GetComponent<Outline>().effectDistance = new Vector2(2.2f, -2.2f);
+        Stretch(titleText.rectTransform, 9f);
+
+        Image closeImage = CreateFixedImage(root.transform, "CloseButton", closeSprite, new Vector2(0.865f, 0.808f), new Vector2(78f, 78f));
+        Button closeButton = closeImage.gameObject.AddComponent<Button>();
+        closeButton.targetGraphic = closeImage;
+
+        RectTransform stepOne = CreateDashedFrame(panel.transform, "StepOne", new Vector2(0.075f, 0.51f), new Vector2(0.925f, 0.82f));
+        CreateTextAt(stepOne, "Instruction", "1.点击右上角图标", 34, Ink, new Vector2(0.05f, 0.70f), new Vector2(0.95f, 0.96f), TextAnchor.MiddleLeft, false);
+        CreateTopMenuDiagram(stepOne, stepOneSprite, arrowSprite);
+
+        RectTransform stepTwo = CreateDashedFrame(panel.transform, "StepTwo", new Vector2(0.075f, 0.10f), new Vector2(0.925f, 0.46f));
+        CreateTextAt(stepTwo, "Instruction", "2.点击添加到小程序", 34, Ink, new Vector2(0.05f, 0.73f), new Vector2(0.95f, 0.96f), TextAnchor.MiddleLeft, false);
+        CreateShareDiagram(stepTwo, stepTwoSprite, arrowSprite);
+
+        SerializedObject overlay = new SerializedObject(root.GetComponent<FavoriteGameGuideOverlay>());
+        overlay.FindProperty("closeButton").objectReferenceValue = closeButton;
+        overlay.ApplyModifiedPropertiesWithoutUndo();
+
+        Directory.CreateDirectory(Path.GetDirectoryName(OutputPath));
+        PrefabUtility.SaveAsPrefabAsset(root, OutputPath);
+        Object.DestroyImmediate(root);
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        Debug.Log("FAVORITE_GUIDE_PREFAB_BUILT " + OutputPath);
+    }
+
+    public static void BuildAndCaptureBatch()
+    {
+        Build();
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(OutputPath);
+        if (prefab == null) throw new FileNotFoundException(OutputPath);
+
+        Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        GameObject cameraObject = new GameObject("PreviewCamera", typeof(Camera));
+        Camera camera = cameraObject.GetComponent<Camera>();
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = new Color32(33, 46, 58, 255);
+        camera.orthographic = true;
+        camera.transform.position = new Vector3(0f, 0f, -100f);
+
+        GameObject instance = PrefabUtility.InstantiatePrefab(prefab, scene) as GameObject;
+        Canvas canvas = instance.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceCamera;
+        canvas.worldCamera = camera;
+        canvas.planeDistance = 10f;
+
+        const int width = 750;
+        const int height = 1334;
+        RenderTexture renderTexture = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32);
+        camera.targetTexture = renderTexture;
+        Canvas.ForceUpdateCanvases();
+        camera.Render();
+        RenderTexture.active = renderTexture;
+        Texture2D screenshot = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        screenshot.ReadPixels(new Rect(0f, 0f, width, height), 0, 0);
+        screenshot.Apply();
+
+        string absolutePreviewPath = Path.Combine(Directory.GetParent(Application.dataPath).FullName, PreviewPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(absolutePreviewPath));
+        File.WriteAllBytes(absolutePreviewPath, screenshot.EncodeToPNG());
+
+        camera.targetTexture = null;
+        RenderTexture.active = null;
+        Object.DestroyImmediate(screenshot);
+        renderTexture.Release();
+        Object.DestroyImmediate(renderTexture);
+        Object.DestroyImmediate(instance);
+        Object.DestroyImmediate(cameraObject);
+        AssetDatabase.Refresh();
+        Debug.Log("FAVORITE_GUIDE_PREVIEW_WRITTEN " + absolutePreviewPath);
+    }
+
+    private static void CreateTopMenuDiagram(Transform parent, Sprite menuSprite, Sprite arrowSprite)
+    {
+        Image menu = CreateImage(parent, "MenuPreview", menuSprite, new Vector2(0.22f, 0.14f), new Vector2(0.78f, 0.61f));
+        menu.preserveAspect = true;
+        CreateRing(menu.transform, "MenuCallout", new Vector2(0.28f, 0.50f), new Vector2(82f, 82f), 6f);
+        CreateFixedImage(menu.transform, "PointerArrow", arrowSprite, new Vector2(0.57f, 0.76f), new Vector2(68f, 64f));
+    }
+
+    private static void CreateShareDiagram(Transform parent, Sprite shareSprite, Sprite arrowSprite)
+    {
+        Image share = CreateImage(parent, "ShareMenuPreview", shareSprite, new Vector2(0.03f, 0.10f), new Vector2(0.97f, 0.62f));
+        share.preserveAspect = true;
+        CreateRing(share.transform, "MiniProgramCallout", new Vector2(0.70f, 0.50f), new Vector2(126f, 166f), 7f);
+        CreateFixedImage(share.transform, "PointerArrow", arrowSprite, new Vector2(0.82f, 0.82f), new Vector2(66f, 62f));
+    }
+
+    private static RectTransform CreateDashedFrame(Transform parent, string name, Vector2 min, Vector2 max)
+    {
+        GameObject root = new GameObject(name, typeof(RectTransform));
+        root.transform.SetParent(parent, false);
+        RectTransform rect = root.GetComponent<RectTransform>();
+        SetAnchors(rect, min, max);
+
+        const int horizontalSegments = 13;
+        const int verticalSegments = 7;
+        for (int index = 0; index < horizontalSegments; index++)
+        {
+            float x0 = 0.01f + index / (float)horizontalSegments;
+            float x1 = x0 + 0.055f;
+            CreateDash(rect, "TopDash" + index, new Vector2(x0, 0.978f), new Vector2(x1, 0.994f));
+            CreateDash(rect, "BottomDash" + index, new Vector2(x0, 0.006f), new Vector2(x1, 0.022f));
+        }
+        for (int index = 0; index < verticalSegments; index++)
+        {
+            float y0 = 0.02f + index / (float)verticalSegments;
+            float y1 = y0 + 0.085f;
+            CreateDash(rect, "LeftDash" + index, new Vector2(0.006f, y0), new Vector2(0.016f, y1));
+            CreateDash(rect, "RightDash" + index, new Vector2(0.984f, y0), new Vector2(0.994f, y1));
+        }
+        return rect;
+    }
+
+    private static void CreateDash(Transform parent, string name, Vector2 min, Vector2 max)
+    {
+        Image dash = CreateSolid(parent, name, Dash);
+        SetAnchors(dash.rectTransform, min, max);
+        dash.raycastTarget = false;
+    }
+
+    private static FavoriteGuideRingGraphic CreateRing(Transform parent, string name, Vector2 anchor, Vector2 size, float thickness)
+    {
+        GameObject gameObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(FavoriteGuideRingGraphic));
+        gameObject.transform.SetParent(parent, false);
+        RectTransform rect = gameObject.GetComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = anchor;
+        rect.sizeDelta = size;
+        FavoriteGuideRingGraphic ring = gameObject.GetComponent<FavoriteGuideRingGraphic>();
+        ring.color = new Color32(238, 40, 35, 255);
+        ring.Thickness = thickness;
+        ring.raycastTarget = false;
+        return ring;
+    }
+
+    private static void PrepareSprite(string path, int maxSize)
+    {
+        AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+        TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
+        if (importer == null) return;
+        importer.textureType = TextureImporterType.Sprite;
+        importer.spriteImportMode = SpriteImportMode.Single;
+        importer.alphaIsTransparency = true;
+        importer.mipmapEnabled = false;
+        importer.wrapMode = TextureWrapMode.Clamp;
+        importer.filterMode = FilterMode.Bilinear;
+        importer.maxTextureSize = maxSize;
+        importer.textureCompression = TextureImporterCompression.Compressed;
+        importer.SaveAndReimport();
+    }
+
+    private static FavoriteGuideRoundedGraphic CreateRounded(Transform parent, string name, Color color, float radius, Vector2 min, Vector2 max)
+    {
+        GameObject gameObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(FavoriteGuideRoundedGraphic));
+        gameObject.transform.SetParent(parent, false);
+        RectTransform rect = gameObject.GetComponent<RectTransform>();
+        SetAnchors(rect, min, max);
+        FavoriteGuideRoundedGraphic graphic = gameObject.GetComponent<FavoriteGuideRoundedGraphic>();
+        graphic.color = color;
+        graphic.Radius = radius;
+        graphic.raycastTarget = false;
+        return graphic;
+    }
+
+    private static FavoriteGuideRoundedGraphic CreateInset(Transform parent, string name, Color color, float radius, float inset)
+    {
+        FavoriteGuideRoundedGraphic graphic = CreateRounded(parent, name, color, radius, Vector2.zero, Vector2.one);
+        Stretch(graphic.rectTransform, inset);
+        return graphic;
+    }
+
+    private static FavoriteGuideRoundedGraphic CreateFixedRounded(Transform parent, string name, Color color, float radius, Vector2 anchor, Vector2 size)
+    {
+        FavoriteGuideRoundedGraphic graphic = CreateRounded(parent, name, color, radius, anchor, anchor);
+        graphic.rectTransform.sizeDelta = size;
+        return graphic;
+    }
+
+    private static Image CreateImage(Transform parent, string name, Sprite sprite, Vector2 min, Vector2 max)
+    {
+        GameObject gameObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        gameObject.transform.SetParent(parent, false);
+        RectTransform rect = gameObject.GetComponent<RectTransform>();
+        SetAnchors(rect, min, max);
+        Image image = gameObject.GetComponent<Image>();
+        image.sprite = sprite;
+        image.color = Color.white;
+        image.raycastTarget = false;
+        return image;
+    }
+
+    private static Image CreateFixedImage(Transform parent, string name, Sprite sprite, Vector2 anchor, Vector2 size)
+    {
+        Image image = CreateImage(parent, name, sprite, anchor, anchor);
+        image.rectTransform.sizeDelta = size;
+        image.preserveAspect = true;
+        return image;
+    }
+
+    private static Image CreateSolid(Transform parent, string name, Color color)
+    {
+        GameObject gameObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        gameObject.transform.SetParent(parent, false);
+        Image image = gameObject.GetComponent<Image>();
+        image.color = color;
+        return image;
+    }
+
+    private static Text CreateText(Transform parent, string name, string value, int size, Color color, TextAnchor alignment, bool outline)
+    {
+        GameObject gameObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Text), typeof(Outline));
+        gameObject.transform.SetParent(parent, false);
+        RectTransform rect = gameObject.GetComponent<RectTransform>();
+        Stretch(rect, 0f);
+        Text text = gameObject.GetComponent<Text>();
+        text.text = value;
+        text.font = font;
+        text.fontSize = size;
+        text.fontStyle = FontStyle.Bold;
+        text.alignment = alignment;
+        text.color = color;
+        text.resizeTextForBestFit = true;
+        text.resizeTextMinSize = Mathf.Max(12, size / 2);
+        text.resizeTextMaxSize = size;
+        text.raycastTarget = false;
+        Outline outlineComponent = gameObject.GetComponent<Outline>();
+        outlineComponent.enabled = outline;
+        outlineComponent.effectColor = new Color32(98, 52, 28, 230);
+        outlineComponent.effectDistance = new Vector2(1.5f, -1.5f);
+        return text;
+    }
+
+    private static Text CreateTextAt(Transform parent, string name, string value, int size, Color color,
+        Vector2 min, Vector2 max, TextAnchor alignment, bool outline)
+    {
+        Text text = CreateText(parent, name, value, size, color, alignment, outline);
+        SetAnchors(text.rectTransform, min, max);
+        return text;
+    }
+
+    private static void SetAnchors(RectTransform rect, Vector2 min, Vector2 max)
+    {
+        rect.anchorMin = min;
+        rect.anchorMax = max;
+        rect.offsetMin = rect.offsetMax = Vector2.zero;
+    }
+
+    private static void Stretch(RectTransform rect, float inset)
+    {
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = new Vector2(inset, inset);
+        rect.offsetMax = new Vector2(-inset, -inset);
+    }
+}
+#endif
+
