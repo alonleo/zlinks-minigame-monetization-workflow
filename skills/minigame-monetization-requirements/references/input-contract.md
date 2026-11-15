@@ -49,6 +49,16 @@ figures:
 source_status: <状态原文>
 target_platforms: [wechat|minigame-douyin]
 cdn_prefix: <信息表原值或 null>
+git_branches:
+  upstream: develop
+  baseline: miniGame
+  wechat: miniGame-wx
+  douyin: miniGame-dy
+build_context:
+  engine_version: <实际工程值>
+  player_runtime: <UnityPlugin, WXGameKit, StarkSDK or equivalent>
+  content_version: <工程配置值或 null>
+  previous_candidate: <仅用于比较的候选标识或 null>
 ```
 
 `requirement_id` 一旦进入实施不得因排序变化而改变。来源没有稳定行 ID 时，使用文档标识、表标识和初次读取行号生成，并在后续同步时用原文摘要辅助匹配；发生一对多匹配时必须人工消歧。

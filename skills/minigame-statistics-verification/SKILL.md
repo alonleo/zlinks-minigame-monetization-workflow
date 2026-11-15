@@ -7,7 +7,11 @@ description: 独立核查微信或抖音小游戏的统计 SDK 集成、行为�
 
 本 skill 用目标平台 IDE 的本次运行网络记录，证明每个待统计行为在必核通道中实际发送、响应成功且字段正确。代码存在调用、SDK 初始化、控制台日志或 HTTP 200 均不能单独证明通过。
 
-开始执行前完整读取总工作流的 [Git 检查点、阶段标签与推送协议](../../references/git-checkpoints.md)。每个平台的自统计通道处理和验证完成后，必须更新脱敏台账并产生独立可追踪提交；全部统计核实完成后创建 `statistics` 阶段汇总提交和 annotated tag，并推送、核验远程。Git 门禁失败时阶段不得报告 `completed`。
+目标平台是微信时，先完整读取总工作流的[微信开发者工具 Skills 接入规范](../../references/wechat-devtools-skills.md)，再使用本机最新官方 debugger scene 取得本次 console/network 记录；具体工具名与筛选参数以本机 `tools.yaml` 为准，不在本 skill 中硬编码或猜测。
+
+目标平台是抖音时，先完整读取总工作流的[抖音开发者工具 Skill 接入规范](../../references/douyin-devtools-skill.md)，再使用本机最新官方 Skill 将真实窗口 ID、操作前 network 基线、行为触发和操作后新增请求绑定为同一条 `runtimeContext`；具体命令和参数以 `douyinide <command> -h` 为准。
+
+开始执行前完整读取总工作流的 [Git 基线、平台分支、检查点与推送协议](../../references/git-checkpoints.md)。微信统计证据与自统计检查点只提交到 `miniGame-wx`，抖音只提交到 `miniGame-dy`；每个平台统计核实完成后，在对应平台分支创建 `statistics` 阶段汇总提交和平台化 annotated tag，并推送、核验远程。Git 门禁失败时对应平台阶段不得报告 `completed`。
 
 如本阶段确需新增自动化工具脚本，只能使用 Python。
 
@@ -31,4 +35,4 @@ description: 独立核查微信或抖音小游戏的统计 SDK 集成、行为�
 
 ## 阶段回执
 
-输出 `completed | partial | blocked | failed`，包括平台与构建标识、集成规范检查表、埋点统计表、网络采集时间窗、IDE 版本、脱敏请求证据、逐项结论、各平台自统计检查点 commit SHA、阶段汇总 commit、annotated tag 和远程推送核验。每个待统计行为在全部必核通道中均满足协议通过标准，且 Git 门禁全部通过后，阶段状态才是 `completed`。
+输出 `completed | partial | blocked | failed`，包括平台分支、`develop` SHA、`miniGame` SHA、平台 HEAD、构建标识、集成规范检查表、埋点统计表、网络采集时间窗、IDE 版本、脱敏请求证据、逐项结论、自统计检查点 commit SHA、阶段汇总 commit、平台化 annotated tag 和远程推送核验。单个平台的待统计行为在全部必核通道中满足通过标准且该平台 Git 门禁通过后，平台状态才是 `completed`；所有请求平台均完成后，整体阶段才是 `completed`。

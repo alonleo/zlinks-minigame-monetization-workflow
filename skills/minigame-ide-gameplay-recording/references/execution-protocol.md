@@ -30,6 +30,10 @@ sensitive_areas: [<account/token/player data to hide or avoid>]
 
 ## 2. 环境预检
 
+微信平台先按总工作流的[微信开发者工具 Skills 接入规范](../../../references/wechat-devtools-skills.md)读取本机官方 Skill 与工具 schema，完成一次 `check_devtools_status`、登录态确认、`project.config.json`/`appid` 校验和项目窗口打开。后续模拟器操作使用官方 automator/debugger scene；工具名和参数以本机 `tools.yaml` 为准。授权或扫码需要用户交互时必须暂停，不能在确认前开始正式录制。
+
+抖音平台先按总工作流的[抖音开发者工具 Skill 接入规范](../../../references/douyin-devtools-skill.md)读取本机官方 Skill，完成 `check-ide-status`、登录、`microgame` 项目类型和真实窗口 ID 确认。录制清单中的每一步都复用同一个 `windowId`；操作前保存截图与 console/network 或项目调试探针基线，按截图缩放换算 CSS 坐标后操作，操作后立即保存截图并读取同类探针增量。命令和参数以 `douyinide <command> -h` 为准。
+
 使用本技能的 Python 脚本：
 
 ```shell
@@ -65,7 +69,9 @@ python scripts/ide_recording.py --action start --platform douyin \
   --capture-width 750 --capture-height 1334
 ```
 
-`Start` 返回 `recording-session.json` 路径后才执行清单步骤。每步记录实际开始时间、结果和异常；需要重试时保留失败表现，或停止后新建一次录制并在交付中说明取舍，不剪辑成无法追溯的“首次成功”。
+`Start` 返回 `recording-session.json` 路径后才执行清单步骤。微信平台通过官方 automator scene 执行点击、输入、滚动、截图和断言，并按需用 debugger scene 记录本次错误日志；每步记录实际开始时间、scene/tool、脱敏参数摘要、返回结果和异常。需要重试时保留失败表现，或停止后新建一次录制并在交付中说明取舍，不剪辑成无法追溯的“首次成功”。
+
+抖音小游戏通过官方 Skill 的坐标点击、滑动或输入执行步骤。每步记录 `runtimeContext`、操作前后截图、图片像素到 CSS 坐标的换算、状态探针基线与增量、命令返回和异常；视觉结果与状态探针必须同时满足预期。缺少探针时标记未确认，不能仅凭 MP4、截图或命令成功判定步骤通过。
 
 完成操作后停止：
 
@@ -93,6 +99,10 @@ python scripts/ide_recording.py --action status \
 - `<platform>-<timestamp>.ffmpeg.log`：录制与封装日志；
 - `<platform>-<timestamp>.receipt.json`：结果、时间、大小、SHA-256、媒体探测结果和失败原因。
 
+微信录制还应保存官方 Skill 版本、IDE 版本、逐步工具调用与断言结果，以及必要的脱敏截图/日志索引；不保存 `openid`、AppID、MCP Token 或玩家敏感数据。
+
+抖音录制还应保存官方 Skill 版本、IDE 版本、项目类型、窗口 ID、逐步命令、坐标换算与脱敏探针索引；不保存登录账号、App ID、Cookie、请求签名或玩家敏感数据。
+
 把录制清单、步骤执行记录、视频和回执用 `recording_id` 关联。视频、日志或回执中出现账号、令牌、请求签名、调试密钥或其他不必要的敏感数据时，不直接交付；重新录制或使用不破坏证据含义的遮挡方案，并说明处理方式。
 
 ## 5. 通过标准
@@ -107,4 +117,4 @@ python scripts/ide_recording.py --action status \
 
 视频损坏、窗口匹配不唯一、FFmpeg 失败、关键步骤不在画面内、录制中切换了项目，或回执缺失时标记失败或阻塞。一个平台失败不删除另一平台的有效证据；分别报告。
 
-所有适用平台通过后，将录屏清单、脱敏会话/媒体回执和大文件证据位置写入仓库内阶段回执；视频是否入库遵守项目既有大文件策略，不得为提交而强行纳入超大文件。随后按总工作流 Git 协议创建 `recording` 阶段汇总提交、annotated tag，推送分支与标签并核验远程。远程核验通过后阶段才是 `completed`。
+单个平台通过后，将录屏清单、脱敏会话/媒体回执和大文件证据位置写入该平台分支的阶段回执；视频是否入库遵守项目既有大文件策略，不得为提交而强行纳入超大文件。微信在 `miniGame-wx`、抖音在 `miniGame-dy` 按总工作流 Git 协议分别创建 `recording` 阶段汇总提交和平台化 annotated tag，推送对应分支与标签并核验远程。该平台远程核验通过后，其录屏阶段才是 `completed`；所有请求平台均完成后，整体录屏阶段才是 `completed`。

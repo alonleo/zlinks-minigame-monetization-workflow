@@ -8,7 +8,8 @@
 
 ```text
 extracted -> located -> experience-reviewed -> prompt-frozen
-          -> implementing -> compiled -> built -> ide-verified -> done
+          -> implementing -> compiled -> built -> logo-processed -> package-gated
+          -> ide-verified -> done
 ```
 
 可从任意执行状态进入：
@@ -18,7 +19,9 @@ extracted -> located -> experience-reviewed -> prompt-frozen
 - `not-applicable`：工程事实证明该条不适用，并附证据；
 - `superseded`：来源需求已产生新版本，保留旧记录但不继续执行。
 
-状态只在证据满足后推进。外部文档的“状态”是 `source_status`，不能直接作为执行台账状态。每条需求进入 `done` 后，按总工作流的 Git 协议更新台账并立即创建该需求的独立检查点提交，再开始下一条需求；提交 SHA 是该条回执的一部分。
+状态只在证据满足后推进。外部文档的“状态”是 `source_status`，不能直接作为执行台账状态。共享实现完成基线验证后，按 Git 协议在 `miniGame` 创建基线实现检查点；该提交不把需求提前标为 `done`。每个平台进入 `done` 后，在对应平台分支更新台账并立即创建该需求的平台完成提交；基线检查点 SHA 与平台完成 SHA 都是该条回执的一部分。
+
+共享需求的检查点提交位于 `miniGame`；平台专属检查点分别位于 `miniGame-wx` 或 `miniGame-dy`。同一需求同时包含共享内容与平台适配时，先完成并提交共享部分，再按 Git 协议把最终基线合入目标平台分支，最后分别完成平台适配。不得把两个平台的专属内容合并成一个提交。
 
 ## 2. 确认修改位置与内容
 
@@ -102,10 +105,14 @@ extracted -> located -> experience-reviewed -> prompt-frozen
 
 ## 5. 实施与编译
 
+- 开始共享内容修改前，记录本轮选定的 `develop` SHA，将其同步到 `miniGame`，验证祖先关系并记录同步 merge commit；随后确认当前分支为 `miniGame`。开始平台适配前确认当前分支分别为微信 `miniGame-wx` 或抖音 `miniGame-dy`，并记录最终 `miniGame` SHA、平台 merge commit 与平台分支 HEAD。分支创建、同步、冲突和推送规则以总工作流 Git 协议为准。
+- 开始写入项目前，按[性能 AI 助手接入协议](performance-assistant-integration.md)判断本需求是否触发性能检查；适用时先建立只读基线并记录 runId，不适用或不可用时记录 `skipped` 原因。
 - 按冻结提示词逐条执行，避免把一条需求的便利性修改扩散到其他需求。
 - 脚本修改完成后使用项目实际引用和编译入口；资源修改完成后检查格式、编码、导入设置、GUID/引用以及生成步骤。
 - 编译前先处理确定性的文本错误、缺失引用、条件编译和平台宏问题。
 - 编译失败时保存本次命令、关键错误和受影响需求，修复后重新运行；不得删测试、关检查或使用旧产物掩盖失败。
+
+编译成功后，对适用需求执行定向检查或可比复验，并生成 `performance_assessment`。检查轮不得修改项目；发现的修复建议只有在用户单独授权、转成独立需求后才能实施。性能助手原始产物留在工程本地或制品存储，台账只保存脱敏摘要、版本、runId、路径与哈希。
 
 ## 6. 验证矩阵
 
@@ -117,10 +124,27 @@ extracted -> located -> experience-reviewed -> prompt-frozen
 | 多平台共享修改 | 各目标平台分别构建和 IDE 核验，不用单平台成功推断另一平台 |
 | 广告策略 | 至少覆盖成功、取消/失败、不可用、重复触发和前后台恢复；模拟 Provider 结果必须明确不是实网验证 |
 | CDN 资源 | 本地资源校验 + 增量上传 + 远端哈希或等价回执 + 构建产物/运行时 URL 引用核对 |
+| 性能敏感的 Unity 改动 | 修改前只读基线 + 编译后定向检查或可比复验 + `performance_assessment`；Editor/原生数据不替代小游戏平台证据 |
+
+微信或抖音 Unity / 团结小游戏在 `built` 后必须先执行[构建后引擎 Logo / 水印处理协议](post-build-logo-removal.md)。只有本次实际导出目录取得 `post_build_logo_removal.verification_result: passed` 才进入 `logo-processed`；处理脚本改变的 WASM、数据资源、`game.js`、大小、哈希、code MD5 和清单必须作为后续门禁的真实输入。任何重新构建或重新导出都退回 `built` 并重新处理。
+
+在 `logo-processed` 后、`ide-verified` 前，必须执行[分包与发布候选门禁](subpackage-release-gates.md)。门禁以处理后的当前候选资源闭包、WASM 哈希、平台分包、启动预算、CDN 清单和运行时加载合同为一个整体；任一组成来自处理前候选、旧候选或中间目录时不得进入 `package-gated`。门禁 `passed` 后固定候选标识和路径，平台 IDE 必须打开该候选。
+
+平台构建还必须来自正确的物理分支：微信候选来自 `miniGame-wx`，抖音候选来自 `miniGame-dy`。构建回执同时记录 `develop` 基线 SHA、最终 `miniGame` SHA、平台分支 HEAD 和两级祖先关系；`miniGame` 缺少选定的 `develop` 或平台分支缺少最终 `miniGame` 时不得进入 `package-gated`。
 
 项目没有可用的构建或 IDE skill 时，不得临时杜撰自动化。记录已完成的静态/编译层证据，并把缺失层级标为 `blocked` 或 `partial`。
 
-## 7. CDN 上传协议
+微信 IDE 核验按总工作流的[微信开发者工具 Skills 接入规范](../../../references/wechat-devtools-skills.md)执行：从本机 `skill.yaml` 读取版本，完成一次状态/登录检查，校验 `project.config.json` 与有效 `appid`，再由 initializer、compiler、automator、debugger scene 分别完成打开项目、编译、交互断言和错误日志核对。具体工具名及参数只从本机 `tools.yaml` 读取。预览、上传体验版和云开发写操作不属于本阶段默认授权。
+
+抖音 IDE 核验按总工作流的[抖音开发者工具 Skill 接入规范](../../../references/douyin-devtools-skill.md)执行：完成状态/登录检查，按 `project.config.json` 和 `game.json` 确认 `microgame`，打开项目后取得真实 `windowId`，再用同一窗口完成强制编译、操作前截图与状态基线、坐标交互、操作后截图与同类探针增量。具体命令和参数只从本机官方 Skill 与 `douyinide <command> -h` 读取。预览、分享代码和上传测试版本不属于本阶段默认授权。
+
+## 7. 分包与发布候选回执
+
+每个平台先按[构建后引擎 Logo / 水印处理协议](post-build-logo-removal.md)保存 `post_build_logo_removal`，再保存 `subpackage_release_gate`。门禁字段和失败关闭条件以[分包与发布候选门禁](subpackage-release-gates.md)为准。资源未变化不等于门禁不适用；仍需证明处理后候选的 catalog、Bundle 集合和 CDN 引用与已验证版本一致。WASM 处理、C# 或平台模板变化时必须重新取得本次 code MD5，并证明函数分包库存匹配或重新生成。
+
+只有门禁 `passed` 才推进到 `package-gated`。门禁需要外部官方分包服务、平台账号、真机样本或 CDN 写权限而当前授权不足时，按实际状态进入 `blocked` 或 `partial`，不得用整包降级、旧库存或静态估算绕过。
+
+## 8. CDN 上传协议
 
 只处理当前需求产生或明确指定的资源：
 
@@ -134,16 +158,19 @@ extracted -> located -> experience-reviewed -> prompt-frozen
 
 七牛 Kodo 使用项目内的 [Kodo 上传 skill](../../minigame-kodo-upload/SKILL.md)。如果信息表指向其他提供方，必须使用对应 skill；没有对应能力时阻塞上传，不把文件复制到本地目录当作已上传。
 
-## 8. 交付报告
+## 9. 交付报告
 
 报告按需求 ID 列出：
 
 - 最终状态和冻结提示词版本；
+- `develop` 基线 SHA、同步到 `miniGame` 的 merge SHA、最终 `miniGame` SHA、目标平台分支、平台合并 SHA 与平台 HEAD；
 - 实际修改位置、文件和可观察变化；
 - 已读取的经验文档及采取的预防措施；
-- 编译、Unity CLI、平台构建和 IDE 核验结果；
+- 编译、Unity CLI、平台构建、构建后 Logo / 水印处理和 IDE 核验结果；
+- 性能检查适用性、`performance_assessment`、阻断项、警告与未覆盖能力面；
+- 各平台分包与发布候选门禁回执，以及固定的最终候选标识和路径；
 - CDN 文件与远端回执；
 - 逐需求检查点 commit SHA；涉及自统计时列出各平台自统计检查点 SHA；
 - 未执行、失败、模拟验证或需要人工/真机复核的内容。
 
-全部适用需求成为 `done` 后，先更新阶段回执，再按 Git 协议创建 `requirements` 阶段汇总提交、annotated tag，推送当前分支和标签并核验远程。只有这些动作也成功时才能表述为需求实现阶段已完成。没有运行时证据时使用“静态检查通过”或“构建通过”等准确措辞。数据统计核实阶段按其独立协议执行，不能因本协议完成而宣称整个商业化流程完成。
+单个平台的全部适用需求成为 `done` 后，先更新该平台阶段回执，再在微信 `miniGame-wx` 或抖音 `miniGame-dy` 按 Git 协议创建 `requirements` 阶段汇总提交和平台化 annotated tag，推送对应分支和标签并核验远程。该平台完成这些动作后才能表述其需求实现阶段已完成；所有请求平台均完成后，整体需求实现阶段才是 `completed`。没有运行时证据时使用“静态检查通过”或“构建通过”等准确措辞。数据统计核实阶段按其独立协议执行，不能因本协议完成而宣称整个商业化流程完成。
