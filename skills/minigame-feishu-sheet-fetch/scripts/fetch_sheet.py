@@ -37,6 +37,13 @@ DEFAULT_ALIASES: dict[str, list[str]] = {
 }
 
 REQUIRED_FIELDS = tuple(DEFAULT_ALIASES)
+OPTIONAL_ALIASES: dict[str, list[str]] = {
+    "delivery_mode": ["交付模式", "实现模式", "拓扑模式", "deliverymode"],
+    "wechat_game_name": ["微信小游戏名称", "微信正式名称", "微信游戏名"],
+    "douyin_game_name": ["抖音小游戏名称", "抖音正式名称", "抖音游戏名"],
+    "variant_id": ["变体ID", "马甲ID", "variantid"],
+}
+ALL_DEFAULT_ALIASES = {**DEFAULT_ALIASES, **OPTIONAL_ALIASES}
 
 DEFAULT_OPTIONS: dict[str, Any] = {
     "spreadsheet": None,
@@ -284,7 +291,7 @@ def column_name(index: int) -> str:
 
 
 def load_aliases(path: str | None) -> dict[str, list[str]]:
-    aliases = {key: list(values) for key, values in DEFAULT_ALIASES.items()}
+    aliases = {key: list(values) for key, values in ALL_DEFAULT_ALIASES.items()}
     if not path:
         return aliases
     try:
@@ -391,6 +398,16 @@ def normalize_table(
             links[canonical] = found_links
         if not text_value and canonical != "cdn_prefix":
             empty_fields.append(canonical)
+    for canonical in OPTIONAL_ALIASES:
+        column = mapping.get(canonical)
+        if column is None:
+            fields[canonical] = None
+            continue
+        value = row[column] if column < len(row) else None
+        fields[canonical] = cell_text(value).strip()
+        found_links = cell_links(value)
+        if found_links:
+            links[canonical] = found_links
     if strict and missing_columns:
         raise InputError(
             "Strict mode requires columns: " + ", ".join(missing_columns)

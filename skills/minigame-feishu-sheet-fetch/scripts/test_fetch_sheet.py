@@ -56,6 +56,20 @@ class FetchSheetTests(unittest.TestCase):
             ["https://acme.feishu.cn/docx/doc123"],
         )
 
+    def test_extracts_optional_topology_and_names(self):
+        rows = [[
+            "游戏", "商业化方案", "CDN路径", "目标平台", "工程路径",
+            "交付模式", "微信小游戏名称", "抖音小游戏名称", "变体ID",
+        ], [
+            "G-1", "doc", "game/g-1", "微信,抖音", "D:/Game",
+            "unified_matrix", "微信原包", "抖音原包", "original",
+        ]]
+        result = fetch_sheet.normalize_table(rows, "G-1", fetch_sheet.load_aliases(None), strict=True)
+        self.assertEqual("unified_matrix", result["fields"]["delivery_mode"])
+        self.assertEqual("微信原包", result["fields"]["wechat_game_name"])
+        self.assertEqual("抖音原包", result["fields"]["douyin_game_name"])
+        self.assertEqual("original", result["fields"]["variant_id"])
+
     def test_rejects_duplicate_game_rows(self):
         rows = [
             ["游戏", "商业化方案"],

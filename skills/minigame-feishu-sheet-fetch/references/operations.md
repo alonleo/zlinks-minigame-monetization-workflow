@@ -93,6 +93,15 @@ $env:FEISHU_APP_SECRET = '<app-secret>'
 | `target_platform` | 目标平台、平台、小游戏平台、发布平台 |
 | `project_path` | 工程路径、项目路径、工程、仓库、仓库地址、Git 仓库 |
 
+以下字段可选提取，不加入旧表的 strict 必填列；工作流仍需在执行前补齐并校验所选模式：
+
+| 可选规范字段 | 默认别名示例 |
+| --- | --- |
+| `delivery_mode` | 交付模式、实现模式、拓扑模式 |
+| `wechat_game_name` | 微信小游戏名称、微信正式名称 |
+| `douyin_game_name` | 抖音小游戏名称、抖音正式名称 |
+| `variant_id` | 变体 ID、马甲 ID |
+
 表头匹配忽略空格、下划线、连字符和 ASCII 大小写。不要使用包含匹配寻找游戏；目标游戏只做规范化后的精确匹配。
 
 项目自定义别名文件示例：
@@ -133,7 +142,7 @@ python skills/minigame-feishu-sheet-fetch/scripts/fetch_sheet.py --config 'confi
 成功 JSON 包含：
 
 - `source`：表格、工作表、读取范围、表头行和目标数据行；
-- `fields`：五个规范字段的文本值；
+- `fields`：五个必需规范字段及已识别的可选模式/名称/变体字段；
 - `links`：从富文本单元格中可辨认的链接；
 - `missing_columns`、`empty_fields`：缺列和空值；
 - `headers`、`raw_row`：用于追溯的原始值。

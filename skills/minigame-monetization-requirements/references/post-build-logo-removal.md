@@ -24,7 +24,7 @@
 5. 对同一目录运行 `blank_unityweb_texture.py <导出目录>`，仅使用默认目标名和透明色；
 6. 重新运行 WASM `--inspect`，确认 `already_disabled` 和 `unity_brotli_marker`；用临时副本解码抽样或等价只读检查确认两张默认目标贴图的实际像素已透明。贴图名称会继续存在，不能以再次 `--dry-run` 返回“无匹配”作为通过标准；
 7. 记录处理后 `game.js`、WASM、数据包和相关清单哈希、脚本退出码、报告与备份路径，并检查备份没有进入发布目录；
-8. 重新核对或生成受内容变化影响的大小、内容哈希、code MD5、平台分包库存和渠道清单。处理后的目录才是后续唯一候选。
+8. 重新核对或生成受内容变化影响的大小、内容哈希、code MD5、WASM 函数分包关闭证据、主包图片预算和渠道清单。处理后的目录才是后续唯一候选。
 
 两个脚本只允许作用于本次已确认的本地导出目录。不得对工程源资源、旧候选、CDN 对象、开发者工具缓存或另一平台目录顺手执行。
 
@@ -34,12 +34,15 @@
 
 ```yaml
 post_build_logo_removal:
+  delivery_mode: isolated_branches | unified_matrix
+  variant_id: <stable id or null>
   platform: wechat | douyin
   tool_root: D:\Tools\MiniGameKit\remove-logo
   candidate_path: <absolute export path>
   source_build_id: <build identifier>
-  source_branch: miniGame-wx | miniGame-dy
-  source_commit: <platform HEAD>
+  source_branch: <platform-named branch or unified branch>
+  source_commit: <candidate source HEAD>
+  resolved_profile_sha256: <value or null>
   wasm_before_sha256: <value>
   wasm_after_sha256: <value>
   data_files_processed: []
@@ -57,7 +60,7 @@ post_build_logo_removal:
 - WASM 指纹未知、无符号版本不受支持、拆分布局不受支持或 `game.js` / WASM 哈希不一致；
 - 脚本退出非零、只处理了部分目标、写回或 Brotli / UnityWeb 往返校验失败；
 - 贴图脚本未扫描到实际发布主数据资源，或处理后默认目标的实际像素未透明；
-- 处理后清单、code MD5、平台分包库存或实际文件不一致；
+- 处理后清单、code MD5、WASM 函数分包关闭证据、主包图片预算或实际文件不一致；
 - 包被重建、再次导出或被其他步骤覆盖，但没有重新执行本协议；
 - 备份、`.bak`、报告、symbols、prepared 目录或开发者工具缓存进入发布范围。
 

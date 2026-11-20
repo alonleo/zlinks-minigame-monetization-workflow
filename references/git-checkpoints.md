@@ -1,36 +1,47 @@
-# Git 基线、平台分支、检查点与推送协议
+# Git 基线、交付拓扑、检查点与推送协议
 
 本协议适用于商业化工作流处理的每个游戏工程。提交、合并、标签和推送是完成门禁的一部分，不是事后可选整理。每个工程独立执行；不得把多个游戏混入同一组检查点。
 
-## 1. 固定分支模型
+先读取[交付拓扑与模式路由](delivery-topologies.md)并固定 `delivery_topology.mode`。下列第 1～7 节是 `isolated_branches` 的完整协议；`unified_matrix` 不创建平台命名分支，只执行第 8 节。两种协议不得在同一 `workflow_id` 混用。
 
-每个游戏工程固定使用四个物理 Git 分支：
+## 1. 分支模型
+
+每个游戏工程固定使用一个前置开发基线、一个共享小游戏基线，并为每个目标平台小游戏（包括马甲包）使用独立的物理 Git 分支。同一平台存在多个小游戏名称时，每个名称分别生成分支，不共用无名称后缀的平台分支：
 
 | 角色 | 分支 | 内容边界 |
 | --- | --- | --- |
 | 前置开发基线 | `develop` | 上游日常开发成果；本工作流只读取和同步，不直接写入商业化修改 |
 | 小游戏共享基线 | `miniGame` | 与微信/抖音共同的游戏内容、资源和业务逻辑 |
-| 微信小游戏 | `miniGame-wx` | 合入 `miniGame` 后的微信 SDK、配置、模板、构建与平台专属修改 |
-| 抖音小游戏 | `miniGame-dy` | 合入 `miniGame` 后的抖音 SDK、配置、模板、构建与平台专属修改 |
+| 微信小游戏 | `miniGame-wx-<wechat-name-initials>` | 合入 `miniGame` 后的微信 SDK、配置、模板、构建与平台专属修改 |
+| 抖音小游戏 | `miniGame-dy-<douyin-name-initials>` | 合入 `miniGame` 后的抖音 SDK、配置、模板、构建与平台专属修改 |
 
 合并方向固定为：
 
 ```text
-develop ──> miniGame ──> miniGame-wx
-                       └─> miniGame-dy
+develop ──> miniGame ──> miniGame-wx-<wechat-name-initials>
+                       └─> miniGame-dy-<douyin-name-initials>
 ```
 
 - `develop` 是 `miniGame` 的唯一前置基线。每轮共享修改开始前，必须选择并记录一个确定的 `develop` SHA，再证明 `miniGame` 包含它。
 - 本工作流不直接在 `develop` 上实施或提交商业化修改。
 - 平台分支不得直接合并 `develop`；所有上游变化必须先进入并验证于 `miniGame`。`miniGame` 的商业化提交也不得由本工作流反向合入 `develop`。
 - 共享游戏内容必须先在 `miniGame` 修改、验证和提交，再合入本轮目标平台分支。
-- `miniGame-wx` 与 `miniGame-dy` 不得互相合并。
+- 微信与抖音平台分支不得互相合并。
 - 平台专属提交不得直接反向合入 `miniGame`。某项能力需要成为共享实现时，在 `miniGame` 上独立实现、验证和提交，再按正常方向同步。
 - 微信和抖音可以独立推进；只处理一个平台时只要求同步该平台分支。
 
+### 平台分支名称
+
+平台分支后缀取该平台小游戏正式名称中各中文字符的拼音首字母，统一转为小写并按原顺序连接；空格、标点和其他分隔符不进入后缀。微信与抖音名称可能不同，必须分别计算，不能复用工程名或另一平台名称。例如：
+
+- 抖音小游戏“英雄工厂”使用 `miniGame-dy-yxgc`；
+- 微信小游戏“橡皮人冲刺大冒险”使用 `miniGame-wx-xprccdmx`。
+
+开始前把平台正式名称、计算出的后缀和最终分支名写入运行记录。多音字、非中文名称或中英文混合名称无法从权威平台信息唯一确定后缀时，必须先取得用户确认；不得自行选择读音。若计算出的分支已存在，先核对它是否属于同一平台小游戏；属于同一小游戏则复用并检查 upstream，属于其他小游戏则报告命名冲突，不覆盖、重置或强推。平台名称发生变化时，不自动重命名已有远程分支，先报告旧名称、旧分支与建议新分支并取得用户确认。
+
 ## 2. 开始前检查与分支取得
 
-在修改前记录仓库根目录、当前分支、四个固定分支的本地/远程状态、各自 `HEAD`、远程和工作区状态。确认目标分支可提交且存在可写远程；不得在 detached HEAD 上推进到阶段完成。
+在修改前记录仓库根目录、当前分支、`develop`、`miniGame` 及本轮所有目标平台命名分支的本地/远程状态、各自 `HEAD`、远程和工作区状态。确认目标分支可提交且存在可写远程；不得在 detached HEAD 上推进到阶段完成。
 
 保留用户已有的未提交修改。每次只暂存本流程当前检查点所属的文件；无法与已有改动安全分离时停止提交并报告，不得用 `git add -A`、丢弃、覆盖或顺带提交无关改动。提交前检查暂存差异，并排除凭据、令牌、隐私数据、缓存和不应入库的构建产物。
 
@@ -86,7 +97,7 @@ feat(<game-slug>): 完成并验证 <platform> <requirement-id> <short-summary>
 
 平台没有额外代码修改时，仍需更新平台台账和脱敏证据索引，并可使用 `verify(<game-slug>): 完成并验证 <platform> <requirement-id>`；不得制造空提交。修复、配置或资源类变更可以使用更准确的类型，但必须保留游戏标识、稳定需求 ID 和完成层级。提交后把基线检查点 SHA 与各平台完成 SHA 分别回填到需求台账。
 
-基线实现检查点位于 `miniGame`。平台完成提交分别位于 `miniGame-wx` 或 `miniGame-dy`，提交信息使用 `wechat` 或 `douyin`；一个提交不得同时包含两平台专属文件。
+基线实现检查点位于 `miniGame`。平台完成提交分别位于已解析的微信或抖音命名分支，提交信息使用 `wechat` 或 `douyin`；一个提交不得同时包含两平台专属文件。
 
 ## 5. 自统计检查点
 
@@ -96,11 +107,11 @@ feat(<game-slug>): 完成并验证 <platform> <requirement-id> <short-summary>
 feat(<game-slug>): 完成并验证 <platform> 自统计 <scope>
 ```
 
-微信自统计检查点只提交到 `miniGame-wx`，抖音自统计检查点只提交到 `miniGame-dy`。若自统计本身就是一个已按第 4 节独立提交的小需求点，不重复创建空提交；在台账中将该 SHA 同时登记为自统计检查点。若后续统计核实阶段产生了新的网络证据或结论，则提交该平台分支新增的脱敏证据与台账更新。
+微信自统计检查点只提交到 `miniGame-wx-<wechat-name-initials>`，抖音自统计检查点只提交到 `miniGame-dy-<douyin-name-initials>`。若自统计本身就是一个已按第 4 节独立提交的小需求点，不重复创建空提交；在台账中将该 SHA 同时登记为自统计检查点。若后续统计核实阶段产生了新的网络证据或结论，则提交该平台分支新增的脱敏证据与台账更新。
 
 ## 6. 平台大阶段里程碑
 
-大阶段是 `requirements`、`recording`、`statistics`。里程碑按平台分支独立创建：微信在 `miniGame-wx`，抖音在 `miniGame-dy`。只有该平台的适用条目满足本阶段完成定义，并且分支包含回执声明的最终 `miniGame` 基线后，才能执行以下动作：
+大阶段是 `requirements`、`recording`、`statistics`。里程碑按已解析的平台命名分支独立创建。只有该平台的适用条目满足本阶段完成定义，并且分支包含回执声明的最终 `miniGame` 基线后，才能执行以下动作：
 
 1. 更新并暂存该平台阶段回执，列出 `develop` SHA、`develop -> miniGame` merge commit、最终 `miniGame` SHA、平台 merge commit、平台 HEAD、所含小需求、自统计检查点和对应 commit SHA；
 2. 创建独立的阶段汇总提交：`milestone(<game-slug>): 完成 <platform> <stage> 阶段`；
@@ -118,10 +129,63 @@ feat(<game-slug>): 完成并验证 <platform> 自统计 <scope>
 
 - 本轮 `develop` 基线 SHA、同步到 `miniGame` 的 merge commit，以及 `miniGame` 是否包含该提交；
 - `miniGame` 最终基线 SHA 与远程推送核验；
-- 微信 `miniGame-wx`、抖音 `miniGame-dy` 各自的 merge commit、平台 HEAD，以及是否包含最终基线；
+- 微信、抖音各自的平台正式名称、名称后缀、最终分支名、merge commit、平台 HEAD，以及是否包含最终基线；
 - 各小需求点的 requirement ID、验证结论和 commit SHA；
 - 各平台自统计检查点及 commit SHA；
 - 每个平台、每个大阶段的汇总 commit、annotated tag、远程和推送核验；
 - 未提交、未打标签或未推送的原因及可续做动作。
 
 小需求提交完成不等于阶段完成；共享基线推送完成也不等于平台完成；本地阶段提交或本地标签存在也不等于阶段完成。只有对应平台分支包含最终基线，且远程平台分支与平台阶段标签核验通过，才能把该平台大阶段报告为 `completed`。所有请求平台均完成后，整体阶段才能报告 `completed`。
+
+## 8. 统一矩阵模式
+
+### 8.1 分支与同步
+
+统一模式固定使用一个明确的 `unified_branch`，推荐 `miniGame-unified`：
+
+```text
+develop ──> miniGame-unified
+```
+
+开始前记录本地/远端 `develop`、统一分支、各自 HEAD、upstream 和工作区状态。统一分支不存在时从本轮选定的 `develop` SHA 创建；存在时先核对归属和 upstream。将确定的 `develop` SHA 合入统一分支并验证祖先关系。不得直接改写 `develop`，不得把 `miniGame-wx-*`、`miniGame-dy-*` 或其他马甲分支合入统一分支，也不得把统一分支反向合入分支隔离模式的分支。
+
+微信、抖音平台适配和全部变体配置可以共存在统一分支，但必须通过平台适配器、构建模板和稳定 `variant_id` 隔离。不得以“同一分支”为由在业务入口按显示名称散布条件分支，或让生产候选保留可切换 AppID/马甲的入口。
+
+### 8.2 检查点
+
+每个规范化小需求在实现、编译和适用目标验证后独立提交。提交信息保留游戏标识、稳定需求 ID 和范围：
+
+```text
+feat(<game-slug>): 完成统一实现 <requirement-id> <short-summary>
+verify(<game-slug>): 验证 <variant-id> <platform> <requirement-id>
+feat(<game-slug>): 完成并验证 <variant-id> <platform> 自统计 <scope>
+```
+
+一项共享实现可以有一个源码提交；不同 `variant_id + platform` 的验证状态必须在台账中分别记录。没有新增代码时更新脱敏证据索引，不制造空提交。`partial`、`blocked` 或 `failed` 不得使用“完成并验证”信息。
+
+### 8.3 候选冻结
+
+每个目标组合在构建前固定：
+
+- `source_branch` 与 `source_commit`；
+- `variant_id`、平台和正式名称；
+- `resolved_profile_sha256` 及解析配置证据；
+- 构建入口、输出路径和预期 CDN 目标。
+
+任何源码、配置哈希或工作区输入变化都会使旧候选失效。多个组合可以来自同一源码提交，但不得共用构建 ID、候选路径、CDN 清单、IDE、录屏或统计证据。
+
+### 8.4 阶段里程碑
+
+每个 `variant_id + platform + stage` 独立满足完成定义后：
+
+1. 更新统一分支内的阶段回执，记录 `develop` SHA、同步 merge commit、源码 SHA、变体、平台、正式名称、解析配置 SHA、构建 ID、小需求与自统计检查点；
+2. 创建阶段汇总提交：`milestone(<game-slug>): 完成 <variant-id> <platform> <stage> 阶段`；
+3. 创建 annotated tag：`monetization/<game-slug>/<workflow-id>/<variant-id>/<platform>/<stage>-v<N>`；
+4. 立即推送统一分支并显式推送标签；
+5. 查询远程分支和标签并保存核验结果。
+
+同一源码矩阵的阶段回执可以在一个汇总提交中列出多个已完成目标，但每个目标仍使用自己的标签和证据索引。标签指向阶段回执提交，回执必须另行记录实际构建使用的不可变 `source_commit`，不得把回执提交误称为候选源码。
+
+### 8.5 统一模式完成条件
+
+只有远程统一分支包含本轮 `develop` 基线、目标组合的候选身份完整、对应阶段回执与标签远程核验通过，才能把该目标阶段报告为 `completed`。统一分支已推送不代表矩阵内所有组合完成；一个平台或马甲通过也不能推断其他组合通过。

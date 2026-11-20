@@ -96,7 +96,9 @@ performance_assessment:
   run_id: <run-id-or-null>
   run_kind: baseline | verify | fix | experiment | null
   requirement_id: <stable requirement id>
-  source_branch: miniGame | miniGame-wx | miniGame-dy
+  delivery_mode: isolated_branches | unified_matrix
+  variant_id: <stable id or null>
+  source_branch: <miniGame, platform-named branch, or unified branch>
   source_commit: <commit or worktree fingerprint>
   upstream_commit: <selected develop commit>
   baseline_commit: <miniGame commit or null>
@@ -116,7 +118,7 @@ performance_assessment:
   skip_reason: <required when skipped>
 ```
 
-所有检查记录本轮选定的 `upstream_commit`。共享内容检查记录 `source_branch: miniGame`；平台候选检查记录对应 `miniGame-wx` 或 `miniGame-dy`，并填写已合入的 `baseline_commit`。`source_commit` 尚未产生时使用可重现的工作区指纹，并在提交后回填 commit。回执不得保存账号、令牌、设备标识、请求签名或玩家数据。原始证据不入库时，记录其本地/制品位置和 SHA-256；无法长期保留时明确写入限制，不伪造可追溯性。
+所有检查记录本轮选定的 `upstream_commit`。分支隔离模式按共享 `miniGame` 或平台命名分支记录；统一矩阵模式记录统一分支，并在目标相关检查中补充 `variant_id`、平台和解析配置 SHA。`source_commit` 尚未产生时使用可重现的工作区指纹，并在提交后回填 commit。回执不得保存账号、令牌、设备标识、请求签名或玩家数据。原始证据不入库时，记录其本地/制品位置和 SHA-256；无法长期保留时明确写入限制，不伪造可追溯性。
 
 ## 6. 与现有门禁的关系
 

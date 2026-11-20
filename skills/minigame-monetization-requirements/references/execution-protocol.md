@@ -1,5 +1,7 @@
 # 需求实现阶段执行协议
 
+Unity 微信或抖音小游戏使用三个独立支持 skill：源码和业务生命周期接入由[资源运行时](../../minigame-resource-runtime/SKILL.md)负责，包归属与真实产物审计由[资源构建与分包](../../minigame-resource-packaging/SKILL.md)负责，同一正式候选的启动与迁移回归由[启动与迁移验收](../../minigame-startup-verification/SKILL.md)负责。三者分别保存回执，再由[分包与发布候选门禁](subpackage-release-gates.md)汇总；不得把一个 skill 的通过结果推断为另外两个已通过。
+
 ## 1. 执行台账与状态机
 
 对每条规范化需求维护独立台账，建议保存在目标工程已有任务目录；没有约定时使用工程内 `.codex/monetization/<requirement-id>/`，但不要覆盖项目已存在的同名流程文件。
@@ -19,9 +21,9 @@ extracted -> located -> experience-reviewed -> prompt-frozen
 - `not-applicable`：工程事实证明该条不适用，并附证据；
 - `superseded`：来源需求已产生新版本，保留旧记录但不继续执行。
 
-状态只在证据满足后推进。外部文档的“状态”是 `source_status`，不能直接作为执行台账状态。共享实现完成基线验证后，按 Git 协议在 `miniGame` 创建基线实现检查点；该提交不把需求提前标为 `done`。每个平台进入 `done` 后，在对应平台分支更新台账并立即创建该需求的平台完成提交；基线检查点 SHA 与平台完成 SHA 都是该条回执的一部分。
+状态只在证据满足后推进。外部文档的“状态”是 `source_status`，不能直接作为执行台账状态。分支隔离模式在 `miniGame` 创建共享基线检查点，并在对应平台分支创建平台完成提交；统一矩阵模式在统一分支创建源码检查点，并为每个 `variant_id + platform` 单独记录验证提交或证据索引。源码检查点不把任何目标提前标为 `done`。
 
-共享需求的检查点提交位于 `miniGame`；平台专属检查点分别位于 `miniGame-wx` 或 `miniGame-dy`。同一需求同时包含共享内容与平台适配时，先完成并提交共享部分，再按 Git 协议把最终基线合入目标平台分支，最后分别完成平台适配。不得把两个平台的专属内容合并成一个提交。
+分支隔离模式的共享检查点位于 `miniGame`，平台检查点位于对应命名分支，并保持先共享、后合并、再平台适配。统一矩阵模式的公共、平台适配和变体配置可以位于同一分支，但必须保持清晰的适用范围和稳定配置边界；一个目标通过不得把其他目标标为完成。
 
 ## 2. 确认修改位置与内容
 
@@ -105,7 +107,7 @@ extracted -> located -> experience-reviewed -> prompt-frozen
 
 ## 5. 实施与编译
 
-- 开始共享内容修改前，记录本轮选定的 `develop` SHA，将其同步到 `miniGame`，验证祖先关系并记录同步 merge commit；随后确认当前分支为 `miniGame`。开始平台适配前确认当前分支分别为微信 `miniGame-wx` 或抖音 `miniGame-dy`，并记录最终 `miniGame` SHA、平台 merge commit 与平台分支 HEAD。分支创建、同步、冲突和推送规则以总工作流 Git 协议为准。
+- 开始修改前记录本轮选定的 `develop` SHA。分支隔离模式按协议同步到 `miniGame` 并再合入平台命名分支；统一矩阵模式直接同步到明确的统一分支，并记录每个目标的 `variant_id`、平台、正式名称和解析配置 SHA。分支创建、同步、冲突和推送规则以总工作流 Git 协议为准。
 - 开始写入项目前，按[性能 AI 助手接入协议](performance-assistant-integration.md)判断本需求是否触发性能检查；适用时先建立只读基线并记录 runId，不适用或不可用时记录 `skipped` 原因。
 - 按冻结提示词逐条执行，避免把一条需求的便利性修改扩散到其他需求。
 - 脚本修改完成后使用项目实际引用和编译入口；资源修改完成后检查格式、编码、导入设置、GUID/引用以及生成步骤。
@@ -119,18 +121,22 @@ extracted -> located -> experience-reviewed -> prompt-frozen
 | 改动类型 | 最低验证 |
 | --- | --- |
 | Unity 脚本或游戏端 UI/场景 | 脚本编译 + Unity CLI 使用正确版本执行可用验证入口 + 本次日志核对；布局需求还要有目标分辨率下的视觉证据 |
-| 微信小游戏端代码/模板/配置 | 微信构建 skill 生成新产物 + 微信 IDE skill 打开该产物并核验需求相关行为和错误日志 |
-| 抖音小游戏端代码/模板/配置 | 抖音构建 skill 生成新产物 + 抖音 IDE skill 打开该产物并核验需求相关行为和错误日志 |
+| 微信小游戏端代码/模板/配置 | 项目内 Release 构建 skill 在微信命名分支生成新候选、完成无函数分包/图片预算/去水印/适用 CDN 门禁 + 微信 IDE skill 打开同一候选并核验需求相关行为和错误日志 |
+| 抖音小游戏端代码/模板/配置 | 项目内 Release 构建 skill 在抖音命名分支生成新候选、完成无函数分包/图片预算/去水印/适用 CDN 门禁 + 抖音 IDE skill 打开同一候选并核验需求相关行为和错误日志 |
 | 多平台共享修改 | 各目标平台分别构建和 IDE 核验，不用单平台成功推断另一平台 |
 | 广告策略 | 至少覆盖成功、取消/失败、不可用、重复触发和前后台恢复；模拟 Provider 结果必须明确不是实网验证 |
+| 抖音视频广告标识 | 从真实广告调用反查全入口；分支隔离模式在抖音命名分支、统一矩阵模式在抖音条件资源/适配中使用官方标识；静态核对 GUID/fileID、图集、动态生成和换图零遗漏；同一最终候选在抖音 IDE 逐入口核对尺寸、比例、位置、对比和点击行为 |
+| 抖音侧边栏 | 首页左侧中下可见入口 + `GoToAdd/CanClaim/Claimed` 状态机 + 宿主能力检查 + onShow 复访识别 + 奖励幂等持久化 + IDE 与同一 `build_id` 真机往返 |
+| 抖音 QA 面板 | 正式 Release 包含五连击入口、密码、字体、授权命令和输入隔离；同一候选完成 IDE 验证，证据不泄露密码 |
+| 抖音排行榜 | 后台配置 + 真实结算/进度上报 + 打开前同步最新值 + 原生 IM 排行榜 UI + 失败/空数据处理 + IDE 与同一 `build_id` 真机证据 |
 | CDN 资源 | 本地资源校验 + 增量上传 + 远端哈希或等价回执 + 构建产物/运行时 URL 引用核对 |
 | 性能敏感的 Unity 改动 | 修改前只读基线 + 编译后定向检查或可比复验 + `performance_assessment`；Editor/原生数据不替代小游戏平台证据 |
 
-微信或抖音 Unity / 团结小游戏在 `built` 后必须先执行[构建后引擎 Logo / 水印处理协议](post-build-logo-removal.md)。只有本次实际导出目录取得 `post_build_logo_removal.verification_result: passed` 才进入 `logo-processed`；处理脚本改变的 WASM、数据资源、`game.js`、大小、哈希、code MD5 和清单必须作为后续门禁的真实输入。任何重新构建或重新导出都退回 `built` 并重新处理。
+微信或抖音 Unity / 团结小游戏必须通过项目内[小游戏 Release 构建 skill](../../minigame-build-release/SKILL.md)产生 `built` 候选。该候选必须证明 WASM 函数分包已关闭、无活动分包产物，且生成后主包每张图片严格小于 `512000` 字节；抖音候选还必须含侧边栏、QA、排行榜及非空 CDN 资源/清单。随后必须执行[构建后引擎 Logo / 水印处理协议](post-build-logo-removal.md)。只有本次实际导出目录取得 `post_build_logo_removal.verification_result: passed` 才进入 `logo-processed`；处理脚本改变的 WASM、数据资源、`game.js`、大小、哈希、code MD5 和清单必须作为后续门禁的真实输入。任何重新构建或重新导出都退回 `built` 并重新执行全部检查。
 
-在 `logo-processed` 后、`ide-verified` 前，必须执行[分包与发布候选门禁](subpackage-release-gates.md)。门禁以处理后的当前候选资源闭包、WASM 哈希、平台分包、启动预算、CDN 清单和运行时加载合同为一个整体；任一组成来自处理前候选、旧候选或中间目录时不得进入 `package-gated`。门禁 `passed` 后固定候选标识和路径，平台 IDE 必须打开该候选。
+在 `logo-processed` 后、`ide-verified` 前，必须执行[分包与发布候选门禁](subpackage-release-gates.md)。门禁以处理后的当前候选资源闭包、WASM 哈希、无函数分包证据、主包图片预算、平台 Data/资源子包、启动预算、CDN 清单和运行时加载合同为一个整体；任一组成来自处理前候选、旧候选或中间目录时不得进入 `package-gated`。门禁 `passed` 后固定候选标识和路径，平台 IDE 必须打开该候选。
 
-平台构建还必须来自正确的物理分支：微信候选来自 `miniGame-wx`，抖音候选来自 `miniGame-dy`。构建回执同时记录 `develop` 基线 SHA、最终 `miniGame` SHA、平台分支 HEAD 和两级祖先关系；`miniGame` 缺少选定的 `develop` 或平台分支缺少最终 `miniGame` 时不得进入 `package-gated`。
+平台构建必须来自当前模式的正确物理分支。分支隔离模式继续要求平台命名分支包含最终 `miniGame`；统一矩阵模式要求统一分支包含选定的 `develop`，并锁定 `variant_id + platform + resolved_profile_sha256`。构建回执记录正式名称、`develop` SHA、源码分支与 HEAD，以及对应模式的祖先关系；身份或祖先关系不满足时不得进入 `package-gated`。
 
 项目没有可用的构建或 IDE skill 时，不得临时杜撰自动化。记录已完成的静态/编译层证据，并把缺失层级标为 `blocked` 或 `partial`。
 
@@ -138,21 +144,25 @@ extracted -> located -> experience-reviewed -> prompt-frozen
 
 抖音 IDE 核验按总工作流的[抖音开发者工具 Skill 接入规范](../../../references/douyin-devtools-skill.md)执行：完成状态/登录检查，按 `project.config.json` 和 `game.json` 确认 `microgame`，打开项目后取得真实 `windowId`，再用同一窗口完成强制编译、操作前截图与状态基线、坐标交互、操作后截图与同类探针增量。具体命令和参数只从本机官方 Skill 与 `douyinide <command> -h` 读取。预览、分享代码和上传测试版本不属于本阶段默认授权。
 
+抖音四项必接能力按[抖音小游戏四项必接能力](../../minigame-standard/references/douyin-mandatory-capabilities.md)逐项验收。IDE 负责本次候选的入口、日志、网络和交互证据；侧边栏完整往返及原生排行榜画面还必须绑定同一 `build_id` 取得真机证据。只有旧包、静态模板、模拟数据或 IDE 截图时不得判定四项完成。
+
+工程存在视频广告时，`douyin_video_ad_icon_audit` 至少包含入口清单、广告调用点、UI 层级、最终 Sprite GUID/fileID 或等价稳定标识、旧标识残留搜索、动态入口覆盖、官方尺寸/位置/对比检查、逐入口 IDE 证据和未验证项。静态阶段 `passed` 后才能固定最终候选；IDE 阶段必须核对同一候选。普通播放图标、广告不可用遮罩和其他平台资源误改均视为失败，不得用“整体看起来一致”替代逐入口结论。
+
 ## 7. 分包与发布候选回执
 
-每个平台先按[构建后引擎 Logo / 水印处理协议](post-build-logo-removal.md)保存 `post_build_logo_removal`，再保存 `subpackage_release_gate`。门禁字段和失败关闭条件以[分包与发布候选门禁](subpackage-release-gates.md)为准。资源未变化不等于门禁不适用；仍需证明处理后候选的 catalog、Bundle 集合和 CDN 引用与已验证版本一致。WASM 处理、C# 或平台模板变化时必须重新取得本次 code MD5，并证明函数分包库存匹配或重新生成。
+每个平台先保存适用的 `resource_runtime`、当前平台 `resource_packaging`、项目内构建 skill 的 `build_release`、[构建后引擎 Logo / 水印处理协议](post-build-logo-removal.md)的 `post_build_logo_removal` 和同一候选的 `startup_verification`，再保存 `subpackage_release_gate`。门禁字段和失败关闭条件以[分包与发布候选门禁](subpackage-release-gates.md)为准。资源未变化不等于门禁不适用；仍需证明处理后候选的 Catalog、Bundle 集合和 CDN 引用与已验证版本一致。WASM 处理、C# 或平台模板变化时必须重新取得本次 code MD5，并重新证明函数分包关闭且不存在活动分包产物。
 
-只有门禁 `passed` 才推进到 `package-gated`。门禁需要外部官方分包服务、平台账号、真机样本或 CDN 写权限而当前授权不足时，按实际状态进入 `blocked` 或 `partial`，不得用整包降级、旧库存或静态估算绕过。
+只有门禁 `passed` 才推进到 `package-gated`。构建存在远程资源但缺少平台账号、CDN 写权限或公开校验能力时，按实际状态进入 `blocked` 或 `partial`；不得跳过上传、改用旧资源、启用 WASM 函数分包或用静态估算绕过。
 
 ## 8. CDN 上传协议
 
-只处理当前需求产生或明确指定的资源：
+只处理当前构建产生或本次明确指定的远程资源。抖音无条件要求真实远程资源目录并执行本节全部步骤；其他平台在候选存在远程资源目录时执行，确实没有远程资源时保存清单证据并记录 `not-applicable`：
 
 1. 从信息表读取 CDN 原始路径；
 2. 从工程配置读取提供方、桶、基础 URL 和资源相对路径；
 3. 由上传 skill 计算实际目标并展示三方对照；
 4. 不一致时停止，不通过字符串拼接猜测线上目录；
-5. 一致时执行增量上传，避免覆盖范围外对象；
+5. 一致时必须执行增量上传，避免覆盖范围外对象；
 6. 保存上传文件清单、大小、本地哈希、远端哈希或 ETag、目标键和时间；
 7. 构建或运行核对引用指向新资源，缓存存在时按项目既有版本策略处理，不擅自全量清缓存。
 
@@ -163,14 +173,15 @@ extracted -> located -> experience-reviewed -> prompt-frozen
 报告按需求 ID 列出：
 
 - 最终状态和冻结提示词版本；
-- `develop` 基线 SHA、同步到 `miniGame` 的 merge SHA、最终 `miniGame` SHA、目标平台分支、平台合并 SHA 与平台 HEAD；
+- 交付模式、`develop` 基线 SHA、当前模式源码分支与同步 merge SHA；分支隔离模式另列最终 `miniGame`、平台合并和平台 HEAD，统一矩阵模式另列 `variant_id + platform + resolved_profile_sha256`；
 - 实际修改位置、文件和可观察变化；
 - 已读取的经验文档及采取的预防措施；
 - 编译、Unity CLI、平台构建、构建后 Logo / 水印处理和 IDE 核验结果；
 - 性能检查适用性、`performance_assessment`、阻断项、警告与未覆盖能力面；
 - 各平台分包与发布候选门禁回执，以及固定的最终候选标识和路径；
+- 抖音四项必接能力回执，以及侧边栏/排行榜当前候选真机证据；
 - CDN 文件与远端回执；
 - 逐需求检查点 commit SHA；涉及自统计时列出各平台自统计检查点 SHA；
 - 未执行、失败、模拟验证或需要人工/真机复核的内容。
 
-单个平台的全部适用需求成为 `done` 后，先更新该平台阶段回执，再在微信 `miniGame-wx` 或抖音 `miniGame-dy` 按 Git 协议创建 `requirements` 阶段汇总提交和平台化 annotated tag，推送对应分支和标签并核验远程。该平台完成这些动作后才能表述其需求实现阶段已完成；所有请求平台均完成后，整体需求实现阶段才是 `completed`。没有运行时证据时使用“静态检查通过”或“构建通过”等准确措辞。数据统计核实阶段按其独立协议执行，不能因本协议完成而宣称整个商业化流程完成。
+单个平台的全部适用需求成为 `done` 后，先更新该平台阶段回执，再在已解析的微信或抖音命名分支按 Git 协议创建 `requirements` 阶段汇总提交和平台化 annotated tag，推送对应分支和标签并核验远程。该平台完成这些动作后才能表述其需求实现阶段已完成；所有请求平台均完成后，整体需求实现阶段才是 `completed`。没有运行时证据时使用“静态检查通过”或“构建通过”等准确措辞。数据统计核实阶段按其独立协议执行，不能因本协议完成而宣称整个商业化流程完成。
